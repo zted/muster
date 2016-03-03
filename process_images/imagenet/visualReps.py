@@ -119,7 +119,8 @@ for dirs in os.listdir(TEST_DIRECTORY):
     else:
         errormsg = 'Offset ID: ' + offID + ' not possible!'
         raise ValueError('OffID not possible!')
-    try: thisSet = senseIdToSynset[offID]
+    try:
+        thisSet = senseIdToSynset[offID]
     except KeyError:
         print dirs
         break
