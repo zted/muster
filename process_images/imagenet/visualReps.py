@@ -20,8 +20,9 @@ import logging
 HOMEDIR = os.environ['HOME']
 caffe_root = HOMEDIR + '/caffe'
 sys.path.insert(0, caffe_root + 'python')
-PROCESSING_DIRECTORY = HOMEDIR + '/Desktop/tests'
-OUTPUT_DIRECTORY = HOMEDIR
+
+PROCESSING_DIRECTORY = '/media/hagrid/Untitled/ilsvrc2012/ILSVRC2012_img_train'
+OUTPUT_DIRECTORY = HOMEDIR + '/Desktop'
 # ^directory needs to contain one folder per synset, like n0123456
 # and in each folder a batch of pictures associated with the synset
 
@@ -33,7 +34,7 @@ PRETRAINED = caffe_root + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
 # Prepare the logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler(OUTPUT_DIRECTORY+'/Log_IMGPROC.log')
+handler = logging.FileHandler(OUTPUT_DIRECTORY+'/Log_toyset.log')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s --- %(message)s')
 handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
@@ -64,7 +65,7 @@ def processOneClass(thisDir):
     for imgName in os.listdir(thisDir):
         count += 1
         imgPath = thisDir + '/' + imgName
-        #print "Processing " + imgPath
+        print "Processing " + imgPath
         img = caffe.io.load_image(imgPath)
         net.predict([img])
         feature_vec = net.blobs['fc8'].data[0].copy()
@@ -123,15 +124,15 @@ def calculateDispersion(vecs):
     dispersion = accum/(2.0*numVecs*(numVecs-1))
     return dispersion
 
-outfile = open(OUTPUT_DIRECTORY+'/out1.txt', 'w')
+outfile = open(OUTPUT_DIRECTORY+'/toyset_results.txt', 'w')
 for dirs in os.listdir(PROCESSING_DIRECTORY):
-    offID = int(dirs[1:])
     try:
+        offID = int(dirs[1:])
         thisSet = senseIdToSynset[offID]
         logger.info("Processing synset " + str(offID))
-    except KeyError:
+    except:
         print "Cannot find the synset for offset ID " + str(offID)
-        logger.warn("Cannot find the synset for offset ID " + str(offID))
+        logger.error("Cannot find the synset for offset ID " + str(offID))
         continue
 
     t0 = time.time()
