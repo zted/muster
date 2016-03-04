@@ -19,7 +19,8 @@ import numpy.random as nr
 homeDir = os.environ['HOME']
 caffe_root = homeDir + '/caffe'
 sys.path.insert(0, caffe_root + 'python')
-TEST_DIRECTORY = '/home/tedz/Desktop/tests'
+PROCESSING_DIRECTORY = '/home/tedz/Desktop/tests'
+OUTPUT_DIRECTORY = homeDir
 # ^directory needs to contain one folder per synset, like n0123456
 # and in each folder a batch of pictures associated with the synset
 
@@ -81,15 +82,18 @@ def entropy(x, k=3, base=2):
 
 def computationsPerDimension(vecs):
     dimensions = len(vecs[0])
-    mean = [0.0] * dimensions
-    std = [0.0] * dimensions
-    ent = [0.0] * dimensions
+    mean = np.array([0.0] * dimensions)
+    std = mean.copy()
+    ent = mean.copy()
+    mp = mean.copy()
+    # ^mp stands for maxpool, we take the maximums of each vector
     for i in range(dimensions):
-        allNums = [j[i] for j in vecs]
-        mean[i] = np.mean(allNums)
-        std[i] = np.std(allNums)
+        allNums = np.array([j[i] for j in vecs])
+        mean[i] = allNums.mean()
+        std[i] = allNums.std()
         ent[i] = entropy(allNums)
-    return mean, std, ent
+        mp[i] = allNums.max()
+    return mean, std, ent, mp
 
 def calculateDispersion(vecs):
     """
@@ -108,29 +112,26 @@ def calculateDispersion(vecs):
     return dispersion
 
 uniqueWords = set([])
-
-for dirs in os.listdir(TEST_DIRECTORY):
+outfile = open(OUTPUT_DIRECTORY+'/out1.txt', 'w')
+for dirs in os.listdir(PROCESSING_DIRECTORY):
     # TODO: write to files, error handling
-    if dirs[1] == '0':
-        # some IDs start with 0, in which case we don't use the first number
-        offID = int(dirs[2:])
-    elif dirs[1] == '1':
-        offID = int(dirs[1:])
-    else:
-        errormsg = 'Offset ID: ' + offID + ' not possible!'
-        raise ValueError('OffID not possible!')
+    offID = int(dirs[1:])
     try:
         thisSet = senseIdToSynset[offID]
     except KeyError:
         print dirs
         break
-    for lem in thisSet.lemmas():
-        uniqueWords.add(str(lem.name()))
-    vecs = processOneClass(TEST_DIRECTORY + '/' + dirs)
-    mean, std, ent = computationsPerDimension(vecs)
+    vecs = processOneClass(PROCESSING_DIRECTORY + '/' + dirs)
+    mean, std, ent, mp = computationsPerDimension(vecs)
     disp = calculateDispersion(vecs)
+
+    for lem in thisSet.lemmas():
+            word = str(lem.name())
+            uniqueWords.add(word)
+            outfile.write(word + ' ' + str(mean.tolist()) + '\n')
+
+outfile.close()
 
 # TODO: make a class for words to store the visual representations and measures in
 # TODO: store these objects in some file that can be easily loadable
 # TODO: make a logger and have optional printing
-# TODO: maxpool the representations for each concept word
