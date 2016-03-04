@@ -14,13 +14,14 @@ import scipy.spatial as ss
 from scipy.special import digamma
 from math import log
 import numpy.random as nr
+import logging
 
 ## Setting some path variables:
-homeDir = os.environ['HOME']
-caffe_root = homeDir + '/caffe'
+HOMEDIR = os.environ['HOME']
+caffe_root = HOMEDIR + '/caffe'
 sys.path.insert(0, caffe_root + 'python')
-PROCESSING_DIRECTORY = '/home/tedz/Desktop/tests'
-OUTPUT_DIRECTORY = homeDir
+PROCESSING_DIRECTORY = HOMEDIR + '/Desktop/tests'
+OUTPUT_DIRECTORY = HOMEDIR
 # ^directory needs to contain one folder per synset, like n0123456
 # and in each folder a batch of pictures associated with the synset
 
@@ -29,7 +30,16 @@ OUTPUT_DIRECTORY = homeDir
 MODEL_FILE = caffe_root + '/models/bvlc_alexnet/deploy.prototxt'
 PRETRAINED = caffe_root + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
 
-# the following line makes program run in CPU/GPU mode
+# Prepare the logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler(OUTPUT_DIRECTORY+'/Log_IMGPROC.log')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s --- %(message)s')
+handler.setFormatter(formatter)
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
+logger.info("LETS GET STARTED, here we gooo")
+
 caffe.set_mode_cpu()
 #caffe.set_mode_gpu()
 
@@ -50,9 +60,11 @@ def processOneClass(thisDir):
     :return: visual representations vectors for each image in a list
     """
     allVecs = []
+    count = 0
     for imgName in os.listdir(thisDir):
+        count += 1
         imgPath = thisDir + '/' + imgName
-        print "Processing " + imgPath
+        #print "Processing " + imgPath
         img = caffe.io.load_image(imgPath)
         net.predict([img])
         feature_vec = net.blobs['fc8'].data[0].copy()
@@ -111,27 +123,48 @@ def calculateDispersion(vecs):
     dispersion = accum/(2.0*numVecs*(numVecs-1))
     return dispersion
 
-uniqueWords = set([])
 outfile = open(OUTPUT_DIRECTORY+'/out1.txt', 'w')
 for dirs in os.listdir(PROCESSING_DIRECTORY):
-    # TODO: write to files, error handling
     offID = int(dirs[1:])
     try:
         thisSet = senseIdToSynset[offID]
+        logger.info("Processing synset " + str(offID))
     except KeyError:
-        print dirs
-        break
-    vecs = processOneClass(PROCESSING_DIRECTORY + '/' + dirs)
-    mean, std, ent, mp = computationsPerDimension(vecs)
-    disp = calculateDispersion(vecs)
+        print "Cannot find the synset for offset ID " + str(offID)
+        logger.warn("Cannot find the synset for offset ID " + str(offID))
+        continue
+
+    t0 = time.time()
+    try:
+        vecs = processOneClass(PROCESSING_DIRECTORY + '/' + dirs)
+        t_elapsed = time.time() - t0
+        num_Imgs = len(vecs)
+        logger.info(str(num_Imgs) + " images took this long to process (seconds): " + str(t_elapsed))
+    except:
+        logger.error("Unexpected error processing images in " + dirs)
+        continue
+
+    t0 = time.time()
+    try:
+        mean, std, ent, mp = computationsPerDimension(vecs)
+        disp = calculateDispersion(vecs)
+        t_elapsed = time.time() - t0
+        logger.info("Vector computations took this long to process (seconds): " + str(t_elapsed))
+    except:
+        logger.error("Unexpected error performing computations for " + dirs)
+        continue
 
     for lem in thisSet.lemmas():
-            word = str(lem.name())
-            uniqueWords.add(word)
-            outfile.write(word + ' ' + str(mean.tolist()) + '\n')
+        word = str(lem.name())
+        outfile.write('-mean- ' + word + ' ' + str(mean.tolist()) + '\n')
+        outfile.write('-maxpool- ' + word + ' ' + str(mp.tolist()) + '\n')
+        outfile.write('-std- ' + word + ' ' + str(std.tolist()) + '\n')
+        outfile.write('-entropy- ' + word + ' ' + str(ent.tolist()) + '\n')
+        outfile.write('-dispersion- ' + word + ' ' + str(disp) + '\n')
 
 outfile.close()
 
+logger.info("Finished")
+
 # TODO: make a class for words to store the visual representations and measures in
 # TODO: store these objects in some file that can be easily loadable
-# TODO: make a logger and have optional printing
