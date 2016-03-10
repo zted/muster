@@ -18,19 +18,19 @@ import logging
 
 ## Setting some path variables:
 HOMEDIR = os.environ['HOME']
-caffe_root = HOMEDIR + '/caffe'
-sys.path.insert(0, caffe_root + 'python')
+CAFFE_ROOT = HOMEDIR + '/caffe'
 
-PROCESSING_DIRECTORY = '/media/hagrid/Untitled/ilsvrc2012/ILSVRC2012_img_train'
+PROCESSING_DIRECTORY = HOMEDIR + '/Desktop/tests'
 OUTPUT_DIRECTORY = HOMEDIR + '/Desktop'
 # ^directory needs to contain one folder per synset, like n0123456
 # and in each folder a batch of pictures associated with the synset
 
 # Set the right path to your model definition file, pretrained model weights,
 # and the image you would like to classify.
-MODEL_FILE = caffe_root + '/models/bvlc_alexnet/deploy.prototxt'
-PRETRAINED = caffe_root + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
+MODEL_FILE = CAFFE_ROOT + '/models/bvlc_alexnet/deploy.prototxt'
+PRETRAINED = CAFFE_ROOT + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
 
+sys.path.insert(0, CAFFE_ROOT + 'python')
 # Prepare the logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -44,9 +44,12 @@ logger.info("LETS GET STARTED, here we gooo")
 caffe.set_mode_cpu()
 #caffe.set_mode_gpu()
 
+# chop off the last layer of alexnet, we don't actually need the classification
+extraction_layer = 'fc7'
+
 # load alexnet's NN model
 net = caffe.Classifier(MODEL_FILE, PRETRAINED,
-                       mean=np.load(caffe_root + '/python/caffe/imagenet/ilsvrc_2012_mean.npy').mean(1).mean(1),
+                       mean=np.load(CAFFE_ROOT + '/python/caffe/imagenet/ilsvrc_2012_mean.npy').mean(1).mean(1),
                        channel_swap=(2,1,0),
                        raw_scale=255,
                        image_dims=(256, 256))
@@ -54,21 +57,30 @@ net = caffe.Classifier(MODEL_FILE, PRETRAINED,
 # create a dictionary that maps synset offset IDs to synset objects
 senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
-def processOneClass(thisDir):
+def processOneClass(thisDir,minPics = 1, maxPics = 1000):
     """
     Processes all images in one directory
     :param thisDir: directory where all the images of a class are stored
     :return: visual representations vectors for each image in a list
     """
     allVecs = []
+    allImgs = os.listdir(thisDir)
+    numImgs = len(allImgs)
     count = 0
+    if numImgs < minPics:
+        # not enough images to get a representation
+        return allVecs
+
     for imgName in os.listdir(thisDir):
+        if count > maxPics:
+            # we've seen enough images from this class
+            break
         count += 1
         imgPath = thisDir + '/' + imgName
         print "Processing " + imgPath
         img = caffe.io.load_image(imgPath)
         net.predict([img])
-        feature_vec = net.blobs['fc8'].data[0].copy()
+        feature_vec = net.blobs[extraction_layer].data[0].copy()
         # the copy() is needed, otherwise feature_vec will store a pointer
         allVecs.append(feature_vec[:])
     return allVecs
@@ -124,10 +136,28 @@ def calculateDispersion(vecs):
     dispersion = accum/(2.0*numVecs*(numVecs-1))
     return dispersion
 
-outfile = open(OUTPUT_DIRECTORY+'/toyset_results.txt', 'w')
-for dirs in os.listdir(PROCESSING_DIRECTORY):
+classes_per_File = 4
+outFilePrefix = '/toyset_results_'
+fileCount = 1
+outFile_Name = outFilePrefix + str(fileCount) + '.txt'
+OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
+directories = os.listdir(PROCESSING_DIRECTORY)
+numClasses = float(len(directories))
+classCount = 0
+
+for dir in directories:
+    classCount += 1
+    percentageCompleted = 100*float(classCount)/numClasses
+    print str(percentageCompleted) + "% completed!"
+    if classCount % classes_per_File == 0:
+        # we've stored enough in one file, open new one
+        OUTFILE.close()
+        fileCount += 1
+        outFile_Name = outFilePrefix + str(fileCount) + '.txt'
+        OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
+
     try:
-        offID = int(dirs[1:])
+        offID = int(dir[1:])
         thisSet = senseIdToSynset[offID]
         logger.info("Processing synset " + str(offID))
     except:
@@ -137,12 +167,12 @@ for dirs in os.listdir(PROCESSING_DIRECTORY):
 
     t0 = time.time()
     try:
-        vecs = processOneClass(PROCESSING_DIRECTORY + '/' + dirs)
+        vecs = processOneClass(PROCESSING_DIRECTORY + '/' + dir)
         t_elapsed = time.time() - t0
-        num_Imgs = len(vecs)
-        logger.info(str(num_Imgs) + " images took this long to process (seconds): " + str(t_elapsed))
+        numImgs = len(vecs)
+        logger.info(str(numImgs) + " images took this long to process (seconds): " + str(t_elapsed))
     except:
-        logger.error("Unexpected error processing images in " + dirs)
+        logger.error("Unexpected error processing images in " + dir)
         continue
 
     t0 = time.time()
@@ -152,18 +182,18 @@ for dirs in os.listdir(PROCESSING_DIRECTORY):
         t_elapsed = time.time() - t0
         logger.info("Vector computations took this long to process (seconds): " + str(t_elapsed))
     except:
-        logger.error("Unexpected error performing computations for " + dirs)
+        logger.error("Unexpected error performing computations for " + dir)
         continue
 
     for lem in thisSet.lemmas():
         word = str(lem.name())
-        outfile.write('-mean- ' + word + ' ' + str(mean.tolist()) + '\n')
-        outfile.write('-maxpool- ' + word + ' ' + str(mp.tolist()) + '\n')
-        outfile.write('-std- ' + word + ' ' + str(std.tolist()) + '\n')
-        outfile.write('-entropy- ' + word + ' ' + str(ent.tolist()) + '\n')
-        outfile.write('-dispersion- ' + word + ' ' + str(disp) + '\n')
+        OUTFILE.write('-mean- ' + word + ' ' + str(mean.tolist()) + '\n')
+        OUTFILE.write('-maxpool- ' + word + ' ' + str(mp.tolist()) + '\n')
+        OUTFILE.write('-std- ' + word + ' ' + str(std.tolist()) + '\n')
+        OUTFILE.write('-entropy- ' + word + ' ' + str(ent.tolist()) + '\n')
+        OUTFILE.write('-dispersion- ' + word + ' ' + str(disp) + '\n')
 
-outfile.close()
+OUTFILE.close()
 
 logger.info("Finished")
 
