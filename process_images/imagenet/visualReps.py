@@ -15,6 +15,7 @@ from scipy.special import digamma
 from math import log
 import numpy.random as nr
 import logging
+from progressbar import Bar,ETA,FileTransferSpeed,Percentage,ProgressBar
 
 ## Setting some path variables:
 HOMEDIR = os.environ['HOME']
@@ -57,7 +58,7 @@ net = caffe.Classifier(MODEL_FILE, PRETRAINED,
 # create a dictionary that maps synset offset IDs to synset objects
 senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
-def processOneClass(thisDir,minPics = 1, maxPics = 1000):
+def processOneClass(thisDir,minPics = 4, maxPics = 1000):
     """
     Processes all images in one directory
     :param thisDir: directory where all the images of a class are stored
@@ -77,7 +78,6 @@ def processOneClass(thisDir,minPics = 1, maxPics = 1000):
             break
         count += 1
         imgPath = thisDir + '/' + imgName
-        print "Processing " + imgPath
         img = caffe.io.load_image(imgPath)
         net.predict([img])
         feature_vec = net.blobs[extraction_layer].data[0].copy()
@@ -136,6 +136,9 @@ def calculateDispersion(vecs):
     dispersion = accum/(2.0*numVecs*(numVecs-1))
     return dispersion
 
+def writeToFile(aFile,metricString,offsetID,word,numString):
+    aFile.write('-{0}- -{1}- -{2}- {3}\n'.format(metricString, str(offsetID), word, numString))
+
 classes_per_File = 4
 outFilePrefix = '/toyset_results_'
 fileCount = 1
@@ -145,10 +148,16 @@ directories = os.listdir(PROCESSING_DIRECTORY)
 numClasses = float(len(directories))
 classCount = 0
 
+# progress bar setup
+widgets = ['Test: ', Percentage(), ' ',
+           Bar(marker='0',left='[',right=']'),
+           ' ', ETA(), ' ', FileTransferSpeed()]
+pbar = ProgressBar(widgets=widgets, maxval=int(numClasses))
+pbar.start()
+
 for dir in directories:
+    pbar.update(classCount)
     classCount += 1
-    percentageCompleted = 100*float(classCount)/numClasses
-    print str(percentageCompleted) + "% completed!"
     if classCount % classes_per_File == 0:
         # we've stored enough in one file, open new one
         OUTFILE.close()
@@ -158,6 +167,7 @@ for dir in directories:
 
     try:
         offID = int(dir[1:])
+        # chops off the 0 in front, for example ID 00123 becomes 123
         thisSet = senseIdToSynset[offID]
         logger.info("Processing synset " + str(offID))
     except:
@@ -170,7 +180,7 @@ for dir in directories:
         vecs = processOneClass(PROCESSING_DIRECTORY + '/' + dir)
         t_elapsed = time.time() - t0
         numImgs = len(vecs)
-        logger.info(str(numImgs) + " images took this long to process (seconds): " + str(t_elapsed))
+        logger.info('{0} images took {1} seconds to process: '.format(str(numImgs),str(t_elapsed)))
     except:
         logger.error("Unexpected error processing images in " + dir)
         continue
@@ -180,22 +190,19 @@ for dir in directories:
         mean, std, ent, mp = computationsPerDimension(vecs)
         disp = calculateDispersion(vecs)
         t_elapsed = time.time() - t0
-        logger.info("Vector computations took this long to process (seconds): " + str(t_elapsed))
+        logger.info("Vector computations took {0} seconds to process: ".format(str(t_elapsed)))
     except:
         logger.error("Unexpected error performing computations for " + dir)
         continue
 
     for lem in thisSet.lemmas():
         word = str(lem.name())
-        OUTFILE.write('-mean- ' + word + ' ' + str(mean.tolist()) + '\n')
-        OUTFILE.write('-maxpool- ' + word + ' ' + str(mp.tolist()) + '\n')
-        OUTFILE.write('-std- ' + word + ' ' + str(std.tolist()) + '\n')
-        OUTFILE.write('-entropy- ' + word + ' ' + str(ent.tolist()) + '\n')
-        OUTFILE.write('-dispersion- ' + word + ' ' + str(disp) + '\n')
+        writeToFile(OUTFILE,'mean',offID,word,str(mean.tolist()))
+        writeToFile(OUTFILE,'maxpool',offID,word,str(mp.tolist()))
+        writeToFile(OUTFILE,'std',offID,word,str(std.tolist()))
+        writeToFile(OUTFILE,'entropy',offID,word,str(ent.tolist()))
+        writeToFile(OUTFILE,'dispersion',offID,word,str(disp))
 
 OUTFILE.close()
-
+pbar.finish()
 logger.info("Finished")
-
-# TODO: make a class for words to store the visual representations and measures in
-# TODO: store these objects in some file that can be easily loadable
