@@ -4,25 +4,31 @@ A trained Alexnet is used to evaluate the images, and several measures are calcu
 word such as entropy, dispersion, mean, standard deviation.
 """
 
-import numpy as np
-import caffe
 import os
-from nltk.corpus import wordnet as wn
 import sys
+import caffe
+import numpy as np
 import time
 import scipy.spatial as ss
 from scipy.special import digamma
 from math import log
 import numpy.random as nr
 import logging
-from progressbar import Bar,ETA,FileTransferSpeed,Percentage,ProgressBar
 
 ## Setting some path variables:
 HOMEDIR = os.environ['HOME']
 CAFFE_ROOT = HOMEDIR + '/caffe'
+OUTPUT_DIRECTORY = HOMEDIR
+sys.path.extend([HOMEDIR + '/packages'])
 
-PROCESSING_DIRECTORY = HOMEDIR + '/Desktop/tests'
-OUTPUT_DIRECTORY = HOMEDIR + '/Desktop'
+from nltk.corpus import wordnet as wn
+from progressbar import Bar,ETA,FileTransferSpeed,Percentage,ProgressBar
+
+PROCESSING_DIRECTORY = sys.argv[1]
+# check processing directory is a indeed a directory
+dirFlag = os.path.isdir(PROCESSING_DIRECTORY)
+if not dirFlag:
+    raise SystemError('Entered: {0} is not a valid directory to process'.format(PROCESSING_DIRECTORY))
 # ^directory needs to contain one folder per synset, like n0123456
 # and in each folder a batch of pictures associated with the synset
 
@@ -31,7 +37,6 @@ OUTPUT_DIRECTORY = HOMEDIR + '/Desktop'
 MODEL_FILE = CAFFE_ROOT + '/models/bvlc_alexnet/deploy.prototxt'
 PRETRAINED = CAFFE_ROOT + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
 
-sys.path.insert(0, CAFFE_ROOT + 'python')
 # Prepare the logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -40,10 +45,12 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s --- %(message)s')
 handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
-logger.info("LETS GET STARTED, here we gooo")
+logger.info("LETS GET STARTED")
+
+senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
 caffe.set_mode_cpu()
-#caffe.set_mode_gpu()
+# caffe.set_mode_gpu()
 
 # chop off the last layer of alexnet, we don't actually need the classification
 extraction_layer = 'fc7'
@@ -206,3 +213,10 @@ for dir in directories:
 OUTFILE.close()
 pbar.finish()
 logger.info("Finished")
+
+
+#TODO: add more options for arguments such as GPU vs CPU
+#TODO: add functionality to extract from tar files
+#TODO: another entropy measure
+#TODO: put vector calculations in another file
+#TODO: normalize values?
