@@ -2,6 +2,10 @@
 The purpose of this file is to generate visual representations for concept words into an output file
 A trained Alexnet is used to evaluate the images, and several measures are calculated for each concept
 word such as entropy, dispersion, mean, standard deviation.
+
+***INSTRUCTIONS - IMPORTANT***
+Execute this file from the top level directory. If file structure is
+muster/process_images/imagenet/visualReps,be in the muster directory
 """
 
 import os
@@ -14,6 +18,7 @@ from scipy.special import digamma
 from math import log
 import numpy.random as nr
 import logging
+import tarfile as trf
 
 ## Setting some path variables:
 HOMEDIR = os.environ['HOME']
@@ -77,7 +82,7 @@ def processOneClass(thisDir,minPics = 4, maxPics = 1000):
     count = 0
     if numImgs < minPics:
         # not enough images to get a representation
-        return allVecs
+        raise ValueError("Not enough images to build feature representation")
 
     for imgName in os.listdir(thisDir):
         if count > maxPics:
@@ -91,6 +96,7 @@ def processOneClass(thisDir,minPics = 4, maxPics = 1000):
         # the copy() is needed, otherwise feature_vec will store a pointer
         allVecs.append(feature_vec[:])
     return allVecs
+
 
 def entropy(x, k=3, base=2):
     """
@@ -112,6 +118,7 @@ def entropy(x, k=3, base=2):
     const = digamma(N)-digamma(k) + d*log(2)
     return (const + d*np.mean(map(log,nn)))/log(base)
 
+
 def computationsPerDimension(vecs):
     dimensions = len(vecs[0])
     mean = np.array([0.0] * dimensions)
@@ -126,6 +133,7 @@ def computationsPerDimension(vecs):
         ent[i] = entropy(allNums)
         mp[i] = allNums.max()
     return mean, std, ent, mp
+
 
 def calculateDispersion(vecs):
     """
@@ -143,8 +151,17 @@ def calculateDispersion(vecs):
     dispersion = accum/(2.0*numVecs*(numVecs-1))
     return dispersion
 
+
 def writeToFile(aFile,metricString,offsetID,word,numString):
     aFile.write('-{0}- -{1}- -{2}- {3}\n'.format(metricString, str(offsetID), word, numString))
+    return
+
+def removeAllSubfiles(someFile):
+    allFiles = os.listdir(someFile)
+    for f in allFiles:
+        os.remove(someFile+'/'+f)
+    return
+
 
 classes_per_File = 4
 outFilePrefix = '/toyset_results_'
@@ -162,9 +179,19 @@ widgets = ['Test: ', Percentage(), ' ',
 pbar = ProgressBar(widgets=widgets, maxval=int(numClasses))
 pbar.start()
 
+tempFolder = PROCESSING_DIRECTORY + '/tmpProcessing'
+os.mkdir(tempFolder)
+
 for dir in directories:
     pbar.update(classCount)
+    tempTar = trf.open('{0}/{1}'.format(PROCESSING_DIRECTORY,dir),'r:')
+    tempTar.extractall(tempFolder)
+    tempTar.close()
     classCount += 1
+    procFolder = tempFolder
+    # redundant now, but if we are working with non-tar files in the future,
+    # then procFolder would not need to be tempFolder
+
     if classCount % classes_per_File == 0:
         # we've stored enough in one file, open new one
         OUTFILE.close()
@@ -173,22 +200,27 @@ for dir in directories:
         OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
 
     try:
-        offID = int(dir[1:])
+        offID = int(dir[1:].strip('.tar'))
         # chops off the 0 in front, for example ID 00123 becomes 123
         thisSet = senseIdToSynset[offID]
         logger.info("Processing synset " + str(offID))
     except:
-        print "Cannot find the synset for offset ID " + str(offID)
-        logger.error("Cannot find the synset for offset ID " + str(offID))
+        print "Cannot find the synset for offset ID in " + dir
+        e = sys.exc_info()[0]
+        logger.error(e)
+        logger.error("Cannot find the synset for offset ID in " + dir)
         continue
 
     t0 = time.time()
     try:
-        vecs = processOneClass(PROCESSING_DIRECTORY + '/' + dir)
+        vecs = processOneClass(procFolder)
         t_elapsed = time.time() - t0
         numImgs = len(vecs)
+        removeAllSubfiles(procFolder)
         logger.info('{0} images took {1} seconds to process: '.format(str(numImgs),str(t_elapsed)))
     except:
+        e = sys.exc_info()[0]
+        logger.error(e)
         logger.error("Unexpected error processing images in " + dir)
         continue
 
@@ -199,6 +231,8 @@ for dir in directories:
         t_elapsed = time.time() - t0
         logger.info("Vector computations took {0} seconds to process: ".format(str(t_elapsed)))
     except:
+        e = sys.exc_info()[0]
+        logger.error(e)
         logger.error("Unexpected error performing computations for " + dir)
         continue
 
@@ -210,6 +244,9 @@ for dir in directories:
         writeToFile(OUTFILE,'entropy',offID,word,str(ent.tolist()))
         writeToFile(OUTFILE,'dispersion',offID,word,str(disp))
 
+
+removeAllSubfiles(procFolder)
+os.rmdir(procFolder)
 OUTFILE.close()
 pbar.finish()
 logger.info("Finished")
@@ -220,3 +257,4 @@ logger.info("Finished")
 #TODO: another entropy measure
 #TODO: put vector calculations in another file
 #TODO: normalize values?
+#TODO: add functionality to specify output directory
