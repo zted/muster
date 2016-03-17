@@ -5,7 +5,8 @@ word such as entropy, dispersion, mean, standard deviation.
 
 ***INSTRUCTIONS - IMPORTANT***
 Execute this file from the top level directory. If file structure is
-muster/process_images/imagenet/visualReps,be in the muster directory
+muster/process_images/imagenet/visualReps, be in the muster directory
+when executing this file (from command line)
 """
 
 import logging
@@ -69,7 +70,7 @@ net = caffe.Classifier(MODEL_FILE, PRETRAINED,
 # create a dictionary that maps synset offset IDs to synset objects
 senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
-def processOneClass(thisDir,minPics = 4, maxPics = 1000):
+def processOneClass(thisDir,minPics = 4, maxPics = 500):
     """
     Processes all images in one directory
     :param thisDir: directory where all the images of a class are stored
@@ -162,6 +163,7 @@ for dir in directories:
     try:
         mean, std, ent, mp = computationsPerDimension(vecs)
         disp = calculateDispersion(vecs)
+        meanEnt = meanEntropy(mean)
         t_elapsed = time.time() - t0
         logger.info("Vector computations took {0} seconds to process: ".format(str(t_elapsed)))
     except:
@@ -170,14 +172,13 @@ for dir in directories:
         logger.error("Unexpected error performing computations for " + dir)
         continue
 
-    for lem in thisSet.lemmas():
-        word = str(lem.name())
-        writeToFile(OUTFILE,'mean',offID,word,str(mean.tolist()))
-        writeToFile(OUTFILE,'maxpool',offID,word,str(mp.tolist()))
-        writeToFile(OUTFILE,'std',offID,word,str(std.tolist()))
-        writeToFile(OUTFILE,'entropy',offID,word,str(ent.tolist()))
-        writeToFile(OUTFILE,'dispersion',offID,word,str(disp))
-
+    word = str(thisSet.lemmas()[0].name())
+    writeToFile(OUTFILE,'mean',offID,word,str(mean.tolist()))
+    writeToFile(OUTFILE,'maxpool',offID,word,str(mp.tolist()))
+    writeToFile(OUTFILE,'std',offID,word,str(std.tolist()))
+    writeToFile(OUTFILE,'entropy',offID,word,str(ent.tolist()))
+    writeToFile(OUTFILE,'dispersion',offID,word,str(disp))
+    writeToFile(OUTFILE,'meanEntropy',offID,word,str(meanEnt))
 
 removeAllSubfiles(procFolder)
 os.rmdir(procFolder)

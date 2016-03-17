@@ -7,6 +7,8 @@ from scipy.special import digamma
 from math import log
 import numpy as np
 
+
+
 def entropy(x, k=3, base=2):
     """
     Adapted from Greg Ver Steeg's NPEET toolkit - more info http://www.isi.edu/~gregv/npeet.html
@@ -59,3 +61,16 @@ def calculateDispersion(vecs):
             accum += (1-dp/denom)
     dispersion = accum/(2.0*numVecs*(numVecs-1))
     return dispersion
+
+def meanEntropy(vec):
+    """
+    :param vecs: a single vector of numbers
+    :return: a scalar, which is the entropy of the vector
+    """
+    n = np.linalg.norm(vec)
+    accum = 0
+    for v in vec:
+        p_norm = v/n
+        result = p_norm*np.log2(p_norm)
+        accum += result
+    return (-accum)
