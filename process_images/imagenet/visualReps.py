@@ -53,8 +53,8 @@ logger.info("LETS GET STARTED")
 
 senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
-caffe.set_mode_cpu()
-# caffe.set_mode_gpu()
+# caffe.set_mode_cpu()
+caffe.set_mode_gpu()
 
 # chop off the last layer of alexnet, we don't actually need the classification
 extraction_layer = 'fc7'
@@ -189,3 +189,4 @@ logger.info("Finished")
 #TODO: another entropy measure
 #TODO: normalize values?
 #TODO: add functionality to specify output directory
+#TODO: only process synsets that we specify
