@@ -8,7 +8,6 @@ from math import log
 import numpy as np
 
 
-
 def entropy(x, k=3, base=2):
     """
     Adapted from Greg Ver Steeg's NPEET toolkit - more info http://www.isi.edu/~gregv/npeet.html
@@ -71,6 +70,9 @@ def meanEntropy(vec):
     accum = 0
     for v in vec:
         p_norm = v/n
-        result = p_norm*np.log2(p_norm)
+        if p_norm == 0:
+            result = 0
+        else:
+            result = p_norm*np.log2(p_norm)
         accum += result
     return (-accum)
