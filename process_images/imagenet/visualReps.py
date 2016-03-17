@@ -8,24 +8,23 @@ Execute this file from the top level directory. If file structure is
 muster/process_images/imagenet/visualReps,be in the muster directory
 """
 
+import logging
 import os
 import sys
-import caffe
-import numpy as np
-import time
-import scipy.spatial as ss
-from scipy.special import digamma
-from math import log
-import numpy.random as nr
-import logging
 import tarfile as trf
+import time
+import caffe
 
 ## Setting some path variables:
 HOMEDIR = os.environ['HOME']
 CAFFE_ROOT = HOMEDIR + '/caffe'
 OUTPUT_DIRECTORY = HOMEDIR
 sys.path.extend([HOMEDIR + '/packages'])
+CWD = os.getcwd()
+sys.path.extend([CWD+'/utils'])
 
+from IOtools import *
+from mathComputations import *
 from nltk.corpus import wordnet as wn
 from progressbar import Bar,ETA,FileTransferSpeed,Percentage,ProgressBar
 
@@ -96,71 +95,6 @@ def processOneClass(thisDir,minPics = 4, maxPics = 1000):
         # the copy() is needed, otherwise feature_vec will store a pointer
         allVecs.append(feature_vec[:])
     return allVecs
-
-
-def entropy(x, k=3, base=2):
-    """
-    Adapted from Greg Ver Steeg's NPEET toolkit - more info http://www.isi.edu/~gregv/npeet.html
-    The classic K-L k-nearest neighbor continuous entropy estimator
-    :param x: a list of numbers, e.g. x = [1.3,3.7,5.1,2.4]
-    :param k: lower bound on how many elements must be in x
-    :param base: base to work in
-    :return:
-    """
-    assert k <= len(x)-1, "Set k smaller than num. samples - 1"
-    x = [[elem] for elem in x]
-    d = len(x[0])
-    N = len(x)
-    intens = 1e-10 #small noise to break degeneracy, see doc.
-    x = [list(p + intens*nr.rand(len(x[0]))) for p in x]
-    tree = ss.cKDTree(x)
-    nn = [tree.query(point, k+1, p=float('inf'))[0][k] for point in x]
-    const = digamma(N)-digamma(k) + d*log(2)
-    return (const + d*np.mean(map(log,nn)))/log(base)
-
-
-def computationsPerDimension(vecs):
-    dimensions = len(vecs[0])
-    mean = np.array([0.0] * dimensions)
-    std = mean.copy()
-    ent = mean.copy()
-    mp = mean.copy()
-    # ^mp stands for maxpool, we take the maximums of each vector
-    for i in range(dimensions):
-        allNums = np.array([j[i] for j in vecs])
-        mean[i] = allNums.mean()
-        std[i] = allNums.std()
-        ent[i] = entropy(allNums)
-        mp[i] = allNums.max()
-    return mean, std, ent, mp
-
-
-def calculateDispersion(vecs):
-    """
-    :param vecs: list of vector representations of a concept word
-    :return: the dispersion of said concept word. a scalar
-    """
-    numVecs = len(vecs)
-    accum = 0.0
-    for i in range(numVecs-1):
-        for j in range(i+1,numVecs):
-            vi = vecs[i]; vj = vecs[j]
-            dp = np.dot(vi,vj)
-            denom = np.linalg.norm(vi) * np.linalg.norm(vj)
-            accum += (1-dp/denom)
-    dispersion = accum/(2.0*numVecs*(numVecs-1))
-    return dispersion
-
-
-def writeToFile(aFile,metricString,offsetID,word,numString):
-    aFile.write('-{0}- -{1}- -{2}- {3}\n'.format(metricString, str(offsetID), word, numString))
-    return
-
-def removeAllSubfiles(someFile):
-    allFiles = os.listdir(someFile)
-    for f in allFiles:
-        os.remove(someFile+'/'+f)
-    return
 
 
 classes_per_File = 4
@@ -251,10 +185,7 @@ OUTFILE.close()
 pbar.finish()
 logger.info("Finished")
 
-
 #TODO: add more options for arguments such as GPU vs CPU
-#TODO: add functionality to extract from tar files
 #TODO: another entropy measure
-#TODO: put vector calculations in another file
 #TODO: normalize values?
 #TODO: add functionality to specify output directory
