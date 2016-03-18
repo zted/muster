@@ -28,5 +28,5 @@ def getUniqueOffsetIDs(inFile):
             synsets = wn.synsets(w)
             s = synsets[0].offset()
             # we take the most relevant synset for now
-            uniqueNums.add(s.offset())
+            uniqueNums.add(s)
     return uniqueNums
