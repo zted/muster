@@ -5,8 +5,8 @@ word such as entropy, dispersion, mean, standard deviation.
 
 ***INSTRUCTIONS - IMPORTANT***
 Execute this file from the top level directory. If file structure is
-muster/process_images/imagenet/visualReps, be in the muster directory
-when executing this file (from command line)
+.../muster/process_images/imagenet/visualReps, be in the .../muster
+directory when executing this file (from command line)
 """
 
 import logging
@@ -98,7 +98,7 @@ def processOneClass(thisDir,minPics = 4, maxPics = 500):
     return allVecs
 
 
-classes_per_File = 4
+classes_per_File = 30
 outFilePrefix = '/toyset_results_'
 fileCount = 1
 outFile_Name = outFilePrefix + str(fileCount) + '.txt'
@@ -114,7 +114,9 @@ widgets = ['Test: ', Percentage(), ' ',
 pbar = ProgressBar(widgets=widgets, maxval=int(numClasses))
 pbar.start()
 
-tempFolder = PROCESSING_DIRECTORY + '/tmpProcessing'
+unique_words_file = CWD+'/data/words_to_get.txt'
+uniqueIDs = getUniqueOffsetIDs(unique_words_file)
+tempFolder = HOMEDIR + '/tmpProcessing'
 os.mkdir(tempFolder)
 
 for dir in directories:
@@ -138,8 +140,12 @@ for dir in directories:
     try:
         offID = int(dir[1:].strip('.tar'))
         # chops off the 0 in front, for example ID 00123 becomes 123
-        thisSet = senseIdToSynset[offID]
-        logger.info("Processing synset " + str(offID))
+        if offID in uniqueIDs:
+            thisSet = senseIdToSynset[offID]
+            logger.info("Processing synset " + str(offID))
+        else:
+            logger.info(str(offID) + " not needed thus not processed")
+            continue
     except:
         print "Cannot find the synset for offset ID in " + dir
         e = sys.exc_info()[0]
