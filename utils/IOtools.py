@@ -22,11 +22,11 @@ def getUniqueOffsetIDs(inFile):
     :return: a set containing integers which are offset IDs
     '''
     uniqueNums = set([])
-    count = 0
     with open(inFile) as f:
         for line in f:
-            count += 1
-            w = line.split("\r")[0]
+            print line
+            w = line.split("\\")[0]
+            print w
             synsets = wn.synsets(w)
             for s in synsets:
                 uniqueNums.add(s.offset())
