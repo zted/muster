@@ -98,7 +98,7 @@ def processOneClass(thisDir,minPics = 4, maxPics = 500):
     return allVecs
 
 
-classes_per_File = 30
+classes_per_File = 20
 outFilePrefix = '/toyset_results_'
 fileCount = 1
 outFile_Name = outFilePrefix + str(fileCount) + '.txt'
@@ -106,6 +106,7 @@ OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
 directories = os.listdir(PROCESSING_DIRECTORY)
 numClasses = float(len(directories))
 classCount = 0
+classesProcessed = 1
 
 # progress bar setup
 widgets = ['Test: ', Percentage(), ' ',
@@ -120,7 +121,6 @@ tempFolder = HOMEDIR + '/tmpProcessing'
 os.mkdir(tempFolder)
 
 for dir in directories:
-    pbar.update(classCount)
 
     if dir == 'fall11_whole.tar':
         # temporary workaround, because the zip file for the
@@ -128,9 +128,10 @@ for dir in directories:
         # image classes and it'll take too long to move
         continue
 
+    pbar.update(classCount)
     classCount += 1
 
-    if classCount % classes_per_File == 0:
+    if classesProcessed % classes_per_File == 0:
         # we've stored enough in one file, open new one
         OUTFILE.close()
         fileCount += 1
@@ -193,6 +194,7 @@ for dir in directories:
     writeToFile(OUTFILE,'entropy',offID,word,str(ent.tolist()))
     writeToFile(OUTFILE,'dispersion',offID,word,str(disp))
     writeToFile(OUTFILE,'meanEntropy',offID,word,str(meanEnt))
+    classesProcessed += 1
 
 removeAllSubfiles(procFolder)
 os.rmdir(procFolder)
@@ -201,7 +203,5 @@ pbar.finish()
 logger.info("Finished")
 
 #TODO: add more options for arguments such as GPU vs CPU
-#TODO: another entropy measure
 #TODO: normalize values?
 #TODO: add functionality to specify output directory
-#TODO: only process synsets that we specify
