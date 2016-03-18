@@ -19,7 +19,7 @@ import caffe
 ## Setting some path variables:
 HOMEDIR = os.environ['HOME']
 CAFFE_ROOT = HOMEDIR + '/caffe'
-OUTPUT_DIRECTORY = HOMEDIR
+OUTPUT_DIRECTORY = HOMEDIR + '/results'
 sys.path.extend([HOMEDIR + '/packages'])
 CWD = os.getcwd()
 sys.path.extend([CWD+'/utils'])

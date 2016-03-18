@@ -24,10 +24,9 @@ def getUniqueOffsetIDs(inFile):
     uniqueNums = set([])
     with open(inFile) as f:
         for line in f:
-            print line
-            w = line.split("\\")[0]
-            print w
+            w = line.split("\n")[0]
             synsets = wn.synsets(w)
-            for s in synsets:
-                uniqueNums.add(s.offset())
+            s = synsets[0].offset()
+            # we take the most relevant synset for now
+            uniqueNums.add(s.offset())
     return uniqueNums
