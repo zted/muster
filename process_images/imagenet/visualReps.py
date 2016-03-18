@@ -119,13 +119,14 @@ os.mkdir(tempFolder)
 
 for dir in directories:
     pbar.update(classCount)
-    tempTar = trf.open('{0}/{1}'.format(PROCESSING_DIRECTORY,dir),'r:')
-    tempTar.extractall(tempFolder)
-    tempTar.close()
+
+    if dir == 'fall11_whole.tar':
+        # temporary workaround, because the zip file for the
+        # entire imagenet is in the same folder as all the
+        # image classes and it'll take too long to move
+        continue
+
     classCount += 1
-    procFolder = tempFolder
-    # redundant now, but if we are working with non-tar files in the future,
-    # then procFolder would not need to be tempFolder
 
     if classCount % classes_per_File == 0:
         # we've stored enough in one file, open new one
@@ -145,6 +146,13 @@ for dir in directories:
         logger.error(e)
         logger.error("Cannot find the synset for offset ID in " + dir)
         continue
+
+    tempTar = trf.open('{0}/{1}'.format(PROCESSING_DIRECTORY,dir),'r:')
+    tempTar.extractall(tempFolder)
+    tempTar.close()
+    procFolder = tempFolder
+    # redundant now, but if we are working with non-tar files in the future,
+    # then procFolder would not need to be tempFolder
 
     t0 = time.time()
     try:
