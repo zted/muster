@@ -114,6 +114,7 @@ widgets = ['Test: ', Percentage(), ' ',
            ' ', ETA(), ' ', FileTransferSpeed()]
 pbar = ProgressBar(widgets=widgets, maxval=int(numClasses))
 pbar.start()
+canOpenNew = True
 
 unique_words_file = CWD+'/data/words_to_get.txt'
 uniqueIDs = getUniqueOffsetIDs(unique_words_file)
@@ -131,8 +132,9 @@ for dir in directories:
     pbar.update(classCount)
     classCount += 1
 
-    if classesProcessed % classes_per_File == 0:
+    if (classesProcessed % classes_per_File == 0) and canOpenNew:
         # we've stored enough in one file, open new one
+        canOpenNew = False
         OUTFILE.close()
         fileCount += 1
         outFile_Name = outFilePrefix + str(fileCount) + '.txt'
@@ -194,6 +196,7 @@ for dir in directories:
     writeToFile(OUTFILE,'entropy',offID,word,str(ent.tolist()))
     writeToFile(OUTFILE,'dispersion',offID,word,str(disp))
     writeToFile(OUTFILE,'meanEntropy',offID,word,str(meanEnt))
+    canOpenNew = True
     classesProcessed += 1
 
 removeAllSubfiles(procFolder)
