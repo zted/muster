@@ -57,8 +57,8 @@ logger.info("LETS GET STARTED")
 
 senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
-caffe.set_mode_cpu()
-# caffe.set_mode_gpu()
+# caffe.set_mode_cpu()
+caffe.set_mode_gpu()
 
 # chop off the last layer of alexnet, we don't actually need the classification
 extraction_layer = 'fc7'
@@ -101,15 +101,18 @@ def processOneClass(thisDir,minPics = 4, maxPics = 500):
     return allVecs
 
 
-classes_per_File = 20
-outFilePrefix = '/toyset_results_'
-fileCount = 1
+classes_per_File = 20  # limiting size of results file
+fileCount = 1  # used for numbering result files
+classCount = 0  # used to track progress
+classesProcessed = 1  # determines when to close results files and open new ones
+canOpenNew = True  # ditto
+
+outFilePrefix = '/Visual_Representations'
 outFile_Name = outFilePrefix + str(fileCount) + '.txt'
 OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
+
 directories = os.listdir(PROCESSING_DIRECTORY)
 numClasses = float(len(directories))
-classCount = 0
-classesProcessed = 1
 
 # progress bar setup
 widgets = ['Test: ', Percentage(), ' ',
@@ -117,7 +120,6 @@ widgets = ['Test: ', Percentage(), ' ',
            ' ', ETA(), ' ', FileTransferSpeed()]
 pbar = ProgressBar(widgets=widgets, maxval=int(numClasses))
 pbar.start()
-canOpenNew = True
 
 unique_words_file = CWD+'/data/words_to_get.txt'
 uniqueIDs = getUniqueOffsetIDs(unique_words_file)
