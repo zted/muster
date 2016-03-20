@@ -3,7 +3,10 @@ The purpose of this file is to generate visual representations for concept words
 A trained Alexnet is used to evaluate the images, and several measures are calculated for each concept
 word such as entropy, dispersion, mean, standard deviation.
 
-***INSTRUCTIONS - IMPORTANT***
+*Execution instructions
+Execute this file by calling it like this - python ../.../visualReps.py ../directory_containing_imgClasses
+
+***WARNING - IMPORTANT***
 Execute this file from the top level directory. If file structure is
 .../muster/process_images/imagenet/visualReps, be in the .../muster
 directory when executing this file (from command line)
@@ -54,8 +57,8 @@ logger.info("LETS GET STARTED")
 
 senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
-# caffe.set_mode_cpu()
-caffe.set_mode_gpu()
+caffe.set_mode_cpu()
+# caffe.set_mode_gpu()
 
 # chop off the last layer of alexnet, we don't actually need the classification
 extraction_layer = 'fc7'
@@ -151,7 +154,7 @@ for dir in directories:
             continue
     except:
         print "Cannot find the synset for offset ID in " + dir
-        e = sys.exc_info()[0]
+        e = sys.exc_info()[1]
         logger.error(e)
         logger.error("Cannot find the synset for offset ID in " + dir)
         continue
@@ -171,7 +174,7 @@ for dir in directories:
         removeAllSubfiles(procFolder)
         logger.info('{0} images took {1} seconds to process: '.format(str(numImgs),str(t_elapsed)))
     except:
-        e = sys.exc_info()[0]
+        e = sys.exc_info()[1]
         logger.error(e)
         logger.error("Unexpected error processing images in " + dir)
         continue
@@ -184,7 +187,7 @@ for dir in directories:
         t_elapsed = time.time() - t0
         logger.info("Vector computations took {0} seconds to process: ".format(str(t_elapsed)))
     except:
-        e = sys.exc_info()[0]
+        e = sys.exc_info()[1]
         logger.error(e)
         logger.error("Unexpected error performing computations for " + dir)
         continue
