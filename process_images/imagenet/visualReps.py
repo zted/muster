@@ -49,7 +49,7 @@ PRETRAINED = CAFFE_ROOT + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
 # Prepare the logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler(OUTPUT_DIRECTORY+'/Log_toyset.log')
+handler = logging.FileHandler(OUTPUT_DIRECTORY+'/Log_EntireSet.log')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s --- %(message)s')
 handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
@@ -149,8 +149,12 @@ for dir in directories:
 
     try:
         offID = int(dir[1:].strip('.tar'))
-        # chops off the 0 in front, for example ID 00123 becomes 123
-        if offID in uniqueIDs:
+        # chops off the 0's in front, for example ID 00123 becomes 123
+        dummyFlag = True
+        # dummyFlag = offID in uniqueIDs
+        # will add an option later on to incorporate whether we want to
+        # process all synsets, or only certain ones
+        if dummyFlag:
             thisSet = senseIdToSynset[offID]
             logger.info("Processing synset " + str(offID))
         else:
