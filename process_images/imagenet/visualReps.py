@@ -111,8 +111,7 @@ def processOneClass(thisDir,minPics = 50, maxPics = 500):
 classes_per_File = 20  # limiting size of results file
 fileCount = 1  # used for numbering result files
 classCount = 0  # used to track progress
-classesProcessed = 1  # determines when to close results files and open new ones
-canOpenNew = True  # ditto
+classesProcessed = 0  # determines when to close results files and open new ones
 
 outFilePrefix = '/Visual_Representations_'
 outFile_Name = outFilePrefix + str(fileCount) + '.txt'
@@ -138,14 +137,6 @@ for dir in directories:
 
     pbar.update(classCount)
     classCount += 1
-
-    if (classesProcessed % classes_per_File == 0) and canOpenNew:
-        # we've stored enough in one file, open new one
-        canOpenNew = False
-        OUTFILE.close()
-        fileCount += 1
-        outFile_Name = outFilePrefix + str(fileCount) + '.txt'
-        OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
 
     try:
         offID = int(dir[1:].strip('.tar'))
@@ -180,7 +171,7 @@ for dir in directories:
         t_elapsed = time.time() - t0
         numImgs = len(vecs)
         IOT.removeAllSubfiles(procFolder)
-        logger.info('{0} images took {1} seconds to process: '.format(str(numImgs),str(t_elapsed)))
+        logger.info('{0} images took {1} seconds to process'.format(str(numImgs),str(t_elapsed)))
     except ValueError as e:
         logger.error('ValueError for {0}: {1}'.format(dir, e))
         continue
@@ -191,7 +182,7 @@ for dir in directories:
         disp = MC.calculateDispersion(vecs)
         meanEnt = MC.meanEntropy(mean)
         t_elapsed = time.time() - t0
-        logger.info("Vector computations took {0} seconds to process: ".format(str(t_elapsed)))
+        logger.info("Vector computations took {0} seconds to process".format(str(t_elapsed)))
     except:
         e = sys.exc_info()[1]
         logger.error(e)
@@ -208,6 +199,14 @@ for dir in directories:
     canOpenNew = True
     classesProcessed += 1
     logger.info('Completed processing synset ' + str(offID))
+
+    if classesProcessed % classes_per_File == 0:
+        # we've stored enough in one file, open new one
+        canOpenNew = False
+        OUTFILE.close()
+        fileCount += 1
+        outFile_Name = outFilePrefix + str(fileCount) + '.txt'
+        OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
 
 IOT.removeAllSubfiles(procFolder)
 os.rmdir(procFolder)
