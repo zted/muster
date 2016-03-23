@@ -94,11 +94,17 @@ def processOneClass(thisDir,minPics = 4, maxPics = 500):
             break
         count += 1
         imgPath = thisDir + '/' + imgName
-        img = caffe.io.load_image(imgPath)
-        net.predict([img])
-        feature_vec = net.blobs[extraction_layer].data[0].copy()
-        # the copy() is needed, otherwise feature_vec will store a pointer
-        allVecs.append(feature_vec[:])
+        try:
+            img = caffe.io.load_image(imgPath)
+            net.predict([img])
+            feature_vec = net.blobs[extraction_layer].data[0].copy()
+            # the copy() is needed, otherwise feature_vec will store a pointer
+            allVecs.append(feature_vec[:])
+        except IOError as e:
+            logger.warn('I/O error({0}) in file {1}: {2}'.format(e.errno, imgName, e.strerror))
+            continue
+    if len(allVecs) < minPics:
+        raise ValueError("Not enough images to build feature representation")
     return allVecs
 
 
@@ -129,12 +135,6 @@ tempFolder = HOMEDIR + '/tmpProcessing'
 os.mkdir(tempFolder)
 
 for dir in directories:
-
-    if dir == 'fall11_whole.tar':
-        # temporary workaround, because the zip file for the
-        # entire imagenet is in the same folder as all the
-        # image classes and it'll take too long to move
-        continue
 
     pbar.update(classCount)
     classCount += 1
@@ -177,10 +177,8 @@ for dir in directories:
         numImgs = len(vecs)
         IOT.removeAllSubfiles(procFolder)
         logger.info('{0} images took {1} seconds to process: '.format(str(numImgs),str(t_elapsed)))
-    except:
-        e = sys.exc_info()[1]
-        logger.error(e)
-        logger.error("Unexpected error processing images in " + dir)
+    except ValueError as e:
+        logger.error('ValueError({0}) for {1}: {2}'.format(e.errno, dir, e.strerror))
         continue
 
     t0 = time.time()
