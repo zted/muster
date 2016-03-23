@@ -16,17 +16,29 @@ def removeAllSubfiles(someFile):
         os.remove(someFile+'/'+f)
     return
 
-def getUniqueOffsetIDs(inFile):
+def wordsToOffsetID(inFile):
     '''
     :param inFile:file that contains words we want offset IDs for
     :return: a set containing integers which are offset IDs
     '''
     uniqueNums = set([])
-    with open(inFile) as f:
-        for line in f:
-            w = line.split("\n")[0]
-            synsets = wn.synsets(w)
-            s = synsets[0].offset()
-            # we take the most relevant synset for now
-            uniqueNums.add(s)
+    f = open(inFile,'r')
+    for line in f:
+        w = line.split("\n")[0]
+        synsets = wn.synsets(w)
+        s = synsets[0].offset()
+        # we take the most relevant synset for now
+        uniqueNums.add(s)
+    return uniqueNums
+
+def getOffsetIDs(inFile):
+    '''
+    :param inFile: file containing offset IDs we want
+    :return: a set containing integers which are offset IDs
+    '''
+    uniqueNums = set([])
+    f = open(inFile,'r')
+    for line in f:
+        n = line.split("\n")[0]
+        uniqueNums.add(int(n))
     return uniqueNums

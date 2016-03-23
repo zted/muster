@@ -18,6 +18,7 @@ import sys
 import tarfile as trf
 import time
 import caffe
+import numpy as np
 
 ## Setting some path variables:
 HOMEDIR = os.environ['HOME']
@@ -27,8 +28,8 @@ sys.path.extend([HOMEDIR + '/packages'])
 CWD = os.getcwd()
 sys.path.extend([CWD+'/utils'])
 
-from IOtools import *
-from mathComputations import *
+import IOtools as IOT
+import mathComputations as MC
 from nltk.corpus import wordnet as wn
 from progressbar import Bar,ETA,FileTransferSpeed,Percentage,ProgressBar
 
@@ -107,7 +108,7 @@ classCount = 0  # used to track progress
 classesProcessed = 1  # determines when to close results files and open new ones
 canOpenNew = True  # ditto
 
-outFilePrefix = '/Visual_Representations'
+outFilePrefix = '/Visual_Representations_'
 outFile_Name = outFilePrefix + str(fileCount) + '.txt'
 OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
 
@@ -121,8 +122,9 @@ widgets = ['Test: ', Percentage(), ' ',
 pbar = ProgressBar(widgets=widgets, maxval=int(numClasses))
 pbar.start()
 
-unique_words_file = CWD+'/data/words_to_get.txt'
-uniqueIDs = getUniqueOffsetIDs(unique_words_file)
+words_file = CWD + '/data/words_to_get.txt'
+synsets_file = CWD + '/data/synsets_to_get.txt'
+uniqueIDs = IOT.getOffsetIDs(synsets_file)
 tempFolder = HOMEDIR + '/tmpProcessing'
 os.mkdir(tempFolder)
 
@@ -173,7 +175,7 @@ for dir in directories:
         vecs = processOneClass(procFolder)
         t_elapsed = time.time() - t0
         numImgs = len(vecs)
-        removeAllSubfiles(procFolder)
+        IOT.removeAllSubfiles(procFolder)
         logger.info('{0} images took {1} seconds to process: '.format(str(numImgs),str(t_elapsed)))
     except:
         e = sys.exc_info()[1]
@@ -183,9 +185,9 @@ for dir in directories:
 
     t0 = time.time()
     try:
-        mean, std, ent, mp = computationsPerDimension(vecs)
-        disp = calculateDispersion(vecs)
-        meanEnt = meanEntropy(mean)
+        mean, std, ent, mp = MC.computationsPerDimension(vecs)
+        disp = MC.calculateDispersion(vecs)
+        meanEnt = MC.meanEntropy(mean)
         t_elapsed = time.time() - t0
         logger.info("Vector computations took {0} seconds to process: ".format(str(t_elapsed)))
     except:
@@ -195,16 +197,17 @@ for dir in directories:
         continue
 
     word = str(thisSet.lemmas()[0].name())
-    writeToFile(OUTFILE,'mean',offID,word,str(mean.tolist()))
-    writeToFile(OUTFILE,'maxpool',offID,word,str(mp.tolist()))
-    writeToFile(OUTFILE,'std',offID,word,str(std.tolist()))
-    writeToFile(OUTFILE,'entropy',offID,word,str(ent.tolist()))
-    writeToFile(OUTFILE,'dispersion',offID,word,str(disp))
-    writeToFile(OUTFILE,'meanEntropy',offID,word,str(meanEnt))
+    IOT.writeToFile(OUTFILE, 'mean', offID, word, str(mean.tolist()))
+    IOT.writeToFile(OUTFILE, 'maxpool', offID, word, str(mp.tolist()))
+    IOT.writeToFile(OUTFILE, 'std', offID, word, str(std.tolist()))
+    IOT.writeToFile(OUTFILE, 'entropy', offID, word, str(ent.tolist()))
+    IOT.writeToFile(OUTFILE, 'dispersion', offID, word, str(disp))
+    IOT.writeToFile(OUTFILE, 'meanEntropy', offID, word, str(meanEnt))
     canOpenNew = True
     classesProcessed += 1
+    logger.info('Completed processing synset ' + str(offID))
 
-removeAllSubfiles(procFolder)
+IOT.removeAllSubfiles(procFolder)
 os.rmdir(procFolder)
 OUTFILE.close()
 pbar.finish()
