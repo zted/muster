@@ -74,7 +74,7 @@ net = caffe.Classifier(MODEL_FILE, PRETRAINED,
 # create a dictionary that maps synset offset IDs to synset objects
 senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
-def processOneClass(thisDir,minPics = 4, maxPics = 500):
+def processOneClass(thisDir,minPics = 50, maxPics = 500):
     """
     Processes all images in one directory
     :param thisDir: directory where all the images of a class are stored
@@ -182,7 +182,7 @@ for dir in directories:
         IOT.removeAllSubfiles(procFolder)
         logger.info('{0} images took {1} seconds to process: '.format(str(numImgs),str(t_elapsed)))
     except ValueError as e:
-        logger.error('ValueError({0}) for {1}: {2}'.format(e.errno, dir, e.strerror))
+        logger.error('ValueError for {0}: {1}'.format(dir, e))
         continue
 
     t0 = time.time()
