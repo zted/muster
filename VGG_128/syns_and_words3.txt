@@ -1,0 +1,9 @@
+n10451590,pollster
+n10553235,ambler
+n03882058,panel
+n04605726,wrapping
+n02863750,boiler
+n04524313,vehicle
+n03585438,chains
+n04194289,ship
+
