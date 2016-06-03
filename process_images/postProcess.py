@@ -4,25 +4,27 @@ import numpy as np
 from nltk.corpus import wordnet as wn
 
 WORDSFILE = '/home/tedz/Desktop/research/code/data/words_to_get.txt'
-RESULTSDIR = '/home/tedz/Desktop/results_1stRun/results'
+RESULTSDIR = '/home/tedz/Desktop/research/imagenet_results'
+
 
 def resultsToCSV(inDirectory,outFile):
-    '''
-    goes through the resultsFiles, extracts the vectors associated
-    with the mean, and writes it to a csv file that can then be
-    processed by matlab
-    :param inDirectory: contains result files with synsets
-    and their feature representations
-    :return: set of synsets
-    '''
+    """
+        goes through the resultsFiles, extracts the vectors associated
+        with the mean, and writes it to a csv file that can then be
+        processed by matlab
+        :param inDirectory: contains result files with synsets
+        and their feature representations
+        :return: set of synsets
+        """
     oFile = open(outFile,'w')
     allFiles = os.listdir(inDirectory)
+    allFiles.sort()
     for f in allFiles:
         fullPath = inDirectory + '/' + f
         ff = open(fullPath,'r')
         for line in ff:
             myStrs = line[0:30].split('-')[0:4]
-            if myStrs[1] != 'mean':
+            if myStrs[1] != 'std':
                 continue
             myVec = line.split('[')[1]
             myVec = myVec.rstrip(']\n')
@@ -30,7 +32,7 @@ def resultsToCSV(inDirectory,outFile):
     oFile.close()
     return
 
-VECS_LONG = '/home/tedz/Desktop/results_1stRun/onlyMean.csv'
+VECS_LONG = '/home/tedz/STD.csv'
 resultsToCSV(RESULTSDIR, VECS_LONG)
 
 # at this point you should find the eigenvectors if using linear PCA
@@ -38,44 +40,86 @@ resultsToCSV(RESULTSDIR, VECS_LONG)
 EIGENVECTORFILE = '/home/tedz/eigVecs.txt'
 
 
-def reduceDimensions(inDirectory, outFile, eigenVectors):
-    '''
+def reduceDimensions(inDirectory, eigvecfile, outFile):
+    """
     goes through the resultsFiles, extracts the vectors associated
     with the mean, reduces the dimensions according to the size of
     eigenVectors, and writes the reduced vector corresponding with
     its offset ID to a new file
     :param inDirectory: directory containing result files
     :param outFile: file to write the new reduced vectors to
-    :param eigenVectors: needs to be type numpy.matrix
+    :param eigenVectors: file containing eigenvectors
     :return:
-    '''
-    oFile = open(outFile,'w')
+    """
+    f = open(eigvecfile, 'r')
+    eigVecs = np.array([ map(float,line.split(',')) for line in f ])
+    # ^loads matrix in file into an numpy matrix
+    f.close()
+    output_strings = []
     allFiles = os.listdir(inDirectory)
+    allFiles.sort()
     for f in allFiles:
         fullPath = inDirectory + '/' + f
         ff = open(fullPath,'r')
         for line in ff:
             myStrs = line[0:30].split('-')[0:4]
-            if myStrs[1] != 'mean':
+            if myStrs[1] != 'maxpool':
                 continue
             myVec = line.split('[')[1]
             myVec = myVec.rstrip(']\n')
             offset = myStrs[3]
             vecArray = np.array(map(float,myVec.split(',')))
-            reducedArray = vecArray * eigenVectors
-            tempStr = '={0}= {1}\n'.format(offset,str(reducedArray.A1.tolist()))
-            # ^A1 converts the 1 x n matrix to an array
-            oFile.write(tempStr)
+            reducedArray = np.dot(vecArray,eigVecs)
+            arraystring = ' '.join(map(str, reducedArray))
+            tempStr = '{} {}\n'.format(offset, arraystring)
+            output_strings.append(tempStr)
+    oFile = open(outFile,'w')
+    for s in output_strings:
+        oFile.write(s)
     oFile.close()
     return
 
-f = open (EIGENVECTORFILE, 'r')
-eigVecs = np.matrix([ map(float,line.split(',')) for line in f ])
-# ^loads matrix in file into an numpy matrix
-f.close()
 
-REDUCEDVEC_ID = '/home/tedz/Desktop/rv.txt'
-reduceDimensions(RESULTSDIR, REDUCEDVEC_ID, eigVecs)
+def extractAttribute(inDirectory, outFile):
+    """
+    goes through the resultsFiles, extracts the vectors associated
+    with the mean, reduces the dimensions according to the size of
+    eigenVectors, and writes the reduced vector corresponding with
+    its offset ID to a new file
+    :param inDirectory: directory containing result files
+    :param outFile: file to write the new reduced vectors to
+    :param eigenVectors: file containing eigenvectors
+    :return:
+    """
+    output_strings = []
+    allFiles = os.listdir(inDirectory)
+    allFiles.sort()
+    for f in allFiles:
+        fullPath = inDirectory + '/' + f
+        ff = open(fullPath,'r')
+        for line in ff:
+            myStrs = line[0:30].split('-')[0:4]
+            if myStrs[1] != 'meanEntropy':
+                continue
+            val = line.rstrip('\n').split('- ')[-1]
+            offset = myStrs[3]
+            tempStr = '{} {}\n'.format(offset, val)
+            output_strings.append(tempStr)
+    oFile = open(outFile,'w')
+    for s in output_strings:
+        oFile.write(s)
+    oFile.close()
+    return
+
+RESULTSDIR = '/home/tedz/Desktop/research/imagenet_results'
+OUTF = '/home/tedz/Desktop/research/imagenet_entropy.txt'
+
+resultsFile = '/home/tedz/Desktop/schooldocs/Info Retrieval/proj/data/2000n_200dim_20w_training_gt.txt'
+outFile = '/home/tedz/Desktop/schooldocs/Info Retrieval/proj/data/2000n_200dim_20w_training_gt_reduced.txt'
+EIGENVECTORFILE = '/home/tedz/Desktop/research/imagenet_all_MP_300d_eigvals.txt'
+
+REDUCEDVEC_ID = '/home/tedz/Desktop/research/imagenet_all_MP_300d_eigvals'
+reduceDimensions(RESULTSDIR, EIGENVECTORFILE, REDUCEDVEC_ID)
 
 
 def uniqueOffsetsFromResults(inDirectory):
