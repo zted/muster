@@ -17,69 +17,22 @@ import os
 import sys
 import tarfile as trf
 import time
+
 import caffe
 import numpy as np
-
-## Setting some path variables:
-HOMEDIR = os.environ['HOME']
-CAFFE_ROOT = HOMEDIR + '/caffe'
-OUTPUT_DIRECTORY = HOMEDIR + '/results'
-sys.path.extend([HOMEDIR + '/packages'])
-CWD = os.getcwd()
-sys.path.extend([CWD+'/utils'])
-
-import IOtools as IOT
-import mathComputations as MC
 from nltk.corpus import wordnet as wn
-from progressbar import Bar,ETA,FileTransferSpeed,Percentage,ProgressBar
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
-PROCESSING_DIRECTORY = sys.argv[1]
-# check processing directory is a indeed a directory
-dirFlag = os.path.isdir(PROCESSING_DIRECTORY)
-if not dirFlag:
-    raise SystemError('Entered: {0} is not a valid directory to process'.format(PROCESSING_DIRECTORY))
-# ^directory needs to contain one folder per synset, like n0123456
-# and in each folder a batch of pictures associated with the synset
+import utils.IOtools as IOT
+import utils.mathComputations as MC
 
-# Set the right path to your model definition file, pretrained model weights,
-# and the image you would like to classify.
-MODEL_FILE = CAFFE_ROOT + '/models/bvlc_alexnet/deploy.prototxt'
-PRETRAINED = CAFFE_ROOT + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
 
-# Prepare the logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.FileHandler(OUTPUT_DIRECTORY+'/Log_EntireSet.log')
-formatter = logging.Formatter('%(asctime)s - %(levelname)s --- %(message)s')
-handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
-logger.info("LETS GET STARTED")
-
-senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
-
-# caffe.set_mode_cpu()
-caffe.set_mode_gpu()
-
-# chop off the last layer of alexnet, we don't actually need the classification
-extraction_layer = 'fc7'
-
-# load alexnet's NN model
-net = caffe.Classifier(MODEL_FILE, PRETRAINED,
-                       mean=np.load(CAFFE_ROOT + '/python/caffe/imagenet/ilsvrc_2012_mean.npy').mean(1).mean(1),
-                       channel_swap=(2,1,0),
-                       raw_scale=255,
-                       image_dims=(256, 256))
-
-# create a dictionary that maps synset offset IDs to synset objects
-senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
-
-def processOneClass(thisDir,minPics = 50, maxPics = 500):
+def processOneClass(thisDir, minPics=50, maxPics=500):
     """
-    Processes all images in one directory
-    :param thisDir: directory where all the images of a class are stored
-    :return: visual representations vectors for each image in a list
-    """
+        Processes all images in one directory
+        :param thisDir: directory where all the images of a class are stored
+        :return: visual representations vectors for each image in a list
+        """
     allVecs = []
     allImgs = os.listdir(thisDir)
     numImgs = len(allImgs)
@@ -102,11 +55,66 @@ def processOneClass(thisDir,minPics = 50, maxPics = 500):
             allVecs.append(feature_vec[:])
         except IOError as e:
             logger.warn('I/O error({0}) in file {1}: {2}'.format(e.errno, imgName, e.strerror))
+            # if for some reason the image cannot be processed, move on to the next one
             continue
     if len(allVecs) < minPics:
         raise ValueError("Not enough images to build feature representation")
     return allVecs
 
+## Setting some path variables. These are server/machine specific
+HOMEDIR = os.environ['HOME']
+CAFFE_ROOT = HOMEDIR + '/caffe'
+# where caffe is installed
+OUTPUT_DIRECTORY = HOMEDIR + '/results'
+# directory to put your results
+sys.path.extend([HOMEDIR + '/packages'])
+CWD = os.getcwd()
+SYNSETS_FILE = CWD + '/data/synsets_to_get.txt'
+# contains a list for all the synsets we want to process, in case we
+# don't want to process the entirety of imagenet.
+TMPFOLDER = HOMEDIR + '/tmpProcessing'
+
+
+PROCESSING_DIRECTORY = sys.argv[1]
+# check processing directory is a indeed a directory
+dirFlag = os.path.isdir(PROCESSING_DIRECTORY)
+if not dirFlag:
+    raise SystemError('Entered: {0} is not a valid directory to process'.format(PROCESSING_DIRECTORY))
+# ^directory needs to contain one folder per synset, like n0123456
+# and in each folder a batch of pictures associated with the synset
+
+# Set the right path to your model definition file, pretrained model weights,
+# and the image you would like to classify.
+MODEL_FILE = CAFFE_ROOT + '/models/bvlc_alexnet/deploy.prototxt'
+PRETRAINED = CAFFE_ROOT + '/models/bvlc_alexnet/bvlc_alexnet.caffemodel'
+
+# Prepare the logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler(OUTPUT_DIRECTORY + '/Log_EntireSet.log')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s --- %(message)s')
+handler.setFormatter(formatter)
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
+logger.info("LETS GET STARTED")
+
+senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
+
+# caffe.set_mode_cpu()
+caffe.set_mode_gpu()
+
+# chop off the last layer of alexnet, we don't actually need the classification
+extraction_layer = 'fc7'
+
+# load alexnet's NN model
+net = caffe.Classifier(MODEL_FILE, PRETRAINED,
+                       mean=np.load(CAFFE_ROOT + '/python/caffe/imagenet/ilsvrc_2012_mean.npy').mean(1).mean(1),
+                       channel_swap=(2, 1, 0),
+                       raw_scale=255,
+                       image_dims=(256, 256))
+
+# create a dictionary that maps synset offset IDs to synset objects
+senseIdToSynset = {s.offset(): s for s in wn.all_synsets()}
 
 classes_per_File = 20  # limiting size of results file
 fileCount = 1  # used for numbering result files
@@ -116,22 +124,21 @@ classesProcessed = 0  # determines when to close results files and open new ones
 outFilePrefix = '/Visual_Representations_'
 outFile_Name = outFilePrefix + str(fileCount) + '.txt'
 OUTFILE = open(OUTPUT_DIRECTORY + outFile_Name, 'w')
+# here is where we want to store the resulting representations
 
 directories = os.listdir(PROCESSING_DIRECTORY)
+directories.sort()
 numClasses = float(len(directories))
 
 # progress bar setup
 widgets = ['Test: ', Percentage(), ' ',
-           Bar(marker='0',left='[',right=']'),
+           Bar(marker='0', left='[', right=']'),
            ' ', ETA(), ' ', FileTransferSpeed()]
 pbar = ProgressBar(widgets=widgets, maxval=int(numClasses))
 pbar.start()
 
-words_file = CWD + '/data/words_to_get.txt'
-synsets_file = CWD + '/data/synsets_to_get.txt'
-uniqueIDs = IOT.getOffsetIDs(synsets_file)
-tempFolder = HOMEDIR + '/tmpProcessing'
-os.mkdir(tempFolder)
+uniqueIDs = IOT.getOffsetIDs(SYNSETS_FILE)
+os.mkdir(TMPFOLDER)
 
 for dir in directories:
 
@@ -141,11 +148,9 @@ for dir in directories:
     try:
         offID = int(dir[1:].strip('.tar'))
         # chops off the 0's in front, for example ID 00123 becomes 123
-        dummyFlag = True
-        # dummyFlag = offID in uniqueIDs
-        # will add an option later on to incorporate whether we want to
+
         # process all synsets, or only certain ones
-        if dummyFlag:
+        if offID in uniqueIDs:
             thisSet = senseIdToSynset[offID]
             logger.info("Processing synset " + str(offID))
         else:
@@ -158,12 +163,12 @@ for dir in directories:
         logger.error("Cannot find the synset for offset ID in " + dir)
         continue
 
-    tempTar = trf.open('{0}/{1}'.format(PROCESSING_DIRECTORY,dir),'r:')
-    tempTar.extractall(tempFolder)
+    tempTar = trf.open('{0}/{1}'.format(PROCESSING_DIRECTORY, dir), 'r:')
+    tempTar.extractall(TMPFOLDER)
     tempTar.close()
-    procFolder = tempFolder
+    procFolder = TMPFOLDER
     # redundant now, but if we are working with non-tar files in the future,
-    # then procFolder would not need to be tempFolder
+    # then procFolder would not need to be TMPFOLDER
 
     t0 = time.time()
     try:
@@ -171,7 +176,7 @@ for dir in directories:
         t_elapsed = time.time() - t0
         numImgs = len(vecs)
         IOT.removeAllSubfiles(procFolder)
-        logger.info('{0} images took {1} seconds to process'.format(str(numImgs),str(t_elapsed)))
+        logger.info('{0} images took {1} seconds to process'.format(str(numImgs), str(t_elapsed)))
     except ValueError as e:
         logger.error('ValueError for {0}: {1}'.format(dir, e))
         continue
@@ -213,7 +218,3 @@ os.rmdir(procFolder)
 OUTFILE.close()
 pbar.finish()
 logger.info("Finished")
-
-#TODO: add more options for arguments such as GPU vs CPU
-#TODO: normalize values?
-#TODO: add functionality to specify output directory

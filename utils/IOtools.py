@@ -4,25 +4,30 @@ and some folder manipulations
 """
 
 import os
+
 from nltk.corpus import wordnet as wn
 
-def writeToFile(aFile,metricString,offsetID,word,numString):
+
+def writeToFile(aFile, metricString, offsetID, word, numString):
     aFile.write('-{0}- -{1}- -{2}- {3}\n'.format(metricString, str(offsetID), word, numString))
     return
 
-def removeAllSubfiles(someFile):
-    allFiles = os.listdir(someFile)
+
+def removeAllSubfiles(someDir):
+    # removes all subfiles from a directory
+    allFiles = os.listdir(someDir)
     for f in allFiles:
-        os.remove(someFile+'/'+f)
+        os.remove(someDir + '/' + f)
     return
 
+
 def wordsToOffsetID(inFile):
-    '''
-    :param inFile:file that contains words we want offset IDs for
-    :return: a set containing integers which are offset IDs
-    '''
+    """
+        :param inFile:file that contains words we want offset IDs for
+        :return: a set containing integers which are offset IDs
+        """
     uniqueNums = set([])
-    f = open(inFile,'r')
+    f = open(inFile, 'r')
     for line in f:
         w = line.split("\n")[0]
         synsets = wn.synsets(w)
@@ -31,13 +36,14 @@ def wordsToOffsetID(inFile):
         uniqueNums.add(s)
     return uniqueNums
 
+
 def getOffsetIDs(inFile):
-    '''
-    :param inFile: file containing offset IDs we want
-    :return: a set containing integers which are offset IDs
-    '''
+    """
+        :param inFile: file containing offset IDs we want
+        :return: a set containing integers which are offset IDs
+        """
     uniqueNums = set([])
-    f = open(inFile,'r')
+    f = open(inFile, 'r')
     for line in f:
         n = line.split("\n")[0]
         uniqueNums.add(int(n))
